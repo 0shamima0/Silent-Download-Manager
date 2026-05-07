@@ -1,4 +1,5 @@
-﻿using System.Windows;
+using System.Windows;
+using Silent.DownloadManager.App.Services;
 using Silent.DownloadManager.App.ViewModels;
 using Silent.DownloadManager.App.Views;
 
@@ -10,7 +11,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        _viewModel = new MainViewModel(ConfirmDelete);
+        _viewModel = new MainViewModel(ConfirmDelete, PickQuality);
         InitializeComponent();
         DataContext = _viewModel;
         Loaded += OnLoaded;
@@ -38,5 +39,20 @@ public partial class MainWindow : Window
             ? dialog.Choice
             : DeleteChoice.Cancel;
     }
-}
 
+    /// <summary>
+    /// Opens the quality picker dialog and returns the user's selection.
+    /// Returns null if the user cancelled.
+    /// </summary>
+    private VideoQualityOption? PickQuality(YtDlpService ytDlpService, string url)
+    {
+        var dialog = new QualityPickerDialog(ytDlpService, url)
+        {
+            Owner = this
+        };
+
+        return dialog.ShowDialog() == true
+            ? dialog.SelectedQuality
+            : null;
+    }
+}

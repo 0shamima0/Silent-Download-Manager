@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace Silent.DownloadManager.App.Models;
@@ -13,6 +13,7 @@ public sealed class DownloadItem : INotifyPropertyChanged
     private double _progress;
     private DownloadStatus _status = DownloadStatus.Queued;
     private string _errorMessage = string.Empty;
+    private string _qualityLabel = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -27,6 +28,12 @@ public sealed class DownloadItem : INotifyPropertyChanged
     /// instead of the plain HTTP DownloadService.
     /// </summary>
     public bool IsYtDlp { get; set; }
+
+    /// <summary>
+    /// The yt-dlp format string used for this download, e.g. "bestvideo[height=1080]+bestaudio/best".
+    /// Empty means "bestvideo+bestaudio/best" (auto best).
+    /// </summary>
+    public string YtDlpFormat { get; set; } = "bestvideo+bestaudio/best";
 
     public required string FileName
     {
@@ -90,9 +97,7 @@ public sealed class DownloadItem : INotifyPropertyChanged
         set
         {
             if (SetField(ref _speedBytesPerSecond, value))
-            {
                 OnPropertyChanged(nameof(SpeedLabel));
-            }
         }
     }
 
@@ -102,9 +107,7 @@ public sealed class DownloadItem : INotifyPropertyChanged
         set
         {
             if (SetField(ref _progress, value))
-            {
                 OnPropertyChanged(nameof(ProgressLabel));
-            }
         }
     }
 
@@ -118,6 +121,13 @@ public sealed class DownloadItem : INotifyPropertyChanged
     {
         get => _errorMessage;
         set => SetField(ref _errorMessage, value);
+    }
+
+    /// <summary>Human-readable quality label, e.g. "1080p (mp4)"</summary>
+    public string QualityLabel
+    {
+        get => _qualityLabel;
+        set => SetField(ref _qualityLabel, value);
     }
 
     public string ProgressLabel => TotalBytes is > 0
@@ -148,9 +158,7 @@ public sealed class DownloadItem : INotifyPropertyChanged
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
-        {
             return false;
-        }
 
         field = value;
         OnPropertyChanged(propertyName);
@@ -160,4 +168,3 @@ public sealed class DownloadItem : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
-

@@ -18,10 +18,16 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Download video with Silent Download Manager",
     contexts: ["video"]
   });
+
+  chrome.contextMenus.create({
+    id: "download-audio-with-sdm",
+    title: "Download audio with Silent Download Manager",
+    contexts: ["audio"]
+  });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "download-video-with-sdm") {
+  if (info.menuItemId === "download-video-with-sdm" || info.menuItemId === "download-audio-with-sdm") {
     const pageUrl = info.pageUrl || tab?.url || "";
     const srcUrl = info.srcUrl || "";
     const isVideoSite = isKnownVideoSite(pageUrl);
@@ -41,8 +47,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   sendToNativeHost(url, referrer);
 });
 
-// FIX: Proper async message handling with .catch() to prevent uncaught promise errors
-// and ensure sendResponse is always called even when native host is unavailable.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "sdm-download-url" && message.url) {
     sendToNativeHost(message.url, message.referrer || sender.tab?.url || "")
@@ -51,8 +55,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error("[SDM] sendToNativeHost failed:", err);
         sendResponse({ ok: false, message: "Native host error. Is SDM running?" });
       });
-    return true; // Keep the message channel open for async response
+    return true;
   }
+
+  // Quality selection request from popup
+  if (message?.type === "sdm-download-with-quality" && message.url && message.quality) {
+    sendToNativeHost(message.url, message.referrer || "", message.quality)
+      .then((response) => sendResponse(response))
+      .catch((err) => {
+        sendResponse({ ok: false, message: "Native host error." });
+      });
+    return true;
+  }
+
   return false;
 });
 
@@ -60,13 +75,26 @@ function isKnownVideoSite(url) {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^(www\.|m\.)/, "");
     const sites = [
-      "youtube.com", "youtu.be",
-      "facebook.com", "fb.watch",
+      "youtube.com", "youtu.be", "music.youtube.com",
+      "facebook.com", "fb.watch", "fb.com",
       "instagram.com",
       "twitter.com", "x.com",
-      "tiktok.com", "vimeo.com",
-      "dailymotion.com", "twitch.tv",
-      "reddit.com", "rumble.com", "odysee.com",
+      "tiktok.com",
+      "vimeo.com",
+      "dailymotion.com",
+      "twitch.tv",
+      "reddit.com",
+      "rumble.com",
+      "odysee.com",
+      "bilibili.com",
+      "nicovideo.jp",
+      "streamable.com",
+      "9gag.com",
+      "imgur.com",
+      "gfycat.com",
+      "pinterest.com",
+      "linkedin.com",
+      "snapchat.com",
     ];
     return sites.some((s) => host === s || host.endsWith("." + s));
   } catch {
@@ -74,14 +102,16 @@ function isKnownVideoSite(url) {
   }
 }
 
-async function sendToNativeHost(url, referrer = "") {
+async function sendToNativeHost(url, referrer = "", quality = "") {
   try {
-    const response = await chrome.runtime.sendNativeMessage(HOST_NAME, { url, referrer });
+    const payload = { url, referrer };
+    if (quality) payload.quality = quality;
+
+    const response = await chrome.runtime.sendNativeMessage(HOST_NAME, payload);
     const message = response?.message || "Sent to Silent Download Manager.";
     notify(message);
     return { ok: response?.ok !== false, message };
   } catch (error) {
-    // FIX: More descriptive error message to help users understand what went wrong
     const message = "SDM native host not reachable. Make sure the desktop app is installed and the native host is registered.";
     notify(message);
     return { ok: false, message };

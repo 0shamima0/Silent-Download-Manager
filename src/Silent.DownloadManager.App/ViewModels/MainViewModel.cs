@@ -1,10 +1,11 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using Silent.DownloadManager.App.Models;
 using Silent.DownloadManager.App.Services;
+using Silent.DownloadManager.App.Views;
 using Microsoft.Win32;
 
 namespace Silent.DownloadManager.App.ViewModels;
@@ -16,15 +17,21 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly StorageService _storageService = new();
     private readonly IncomingRequestService _incomingRequestService = new();
     private readonly Func<DownloadItem, DeleteChoice> _confirmDelete;
+    private readonly Func<YtDlpService, string, VideoQualityOption?> _pickQuality;
+
     private string _newUrl = string.Empty;
     private string _downloadFolder = AppPaths.DefaultDownloadFolder;
     private DownloadItem? _selectedDownload;
     private string? _pendingReferrer;
     private string _statusText = "Ready";
 
-    public MainViewModel(Func<DownloadItem, DeleteChoice>? confirmDelete = null)
+    public MainViewModel(
+        Func<DownloadItem, DeleteChoice>? confirmDelete = null,
+        Func<YtDlpService, string, VideoQualityOption?>? pickQuality = null)
     {
         _confirmDelete = confirmDelete ?? (_ => DeleteChoice.RemoveFromListOnly);
+        _pickQuality = pickQuality ?? ((_, _) => null);
+
         Downloads = [];
         AddDownloadCommand = new RelayCommand(AddDownload);
         ChooseFolderCommand = new RelayCommand(ChooseFolder);
@@ -86,6 +93,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 OnPropertyChanged(nameof(SelectedProgressText));
                 OnPropertyChanged(nameof(SelectedTargetPath));
                 OnPropertyChanged(nameof(SelectedUrl));
+                OnPropertyChanged(nameof(SelectedQualityLabel));
                 OnPropertyChanged(nameof(IsSelectedYtDlp));
             }
         }
@@ -109,8 +117,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public string SelectedProgressText => SelectedDownload?.ProgressLabel ?? "-";
     public string SelectedTargetPath => SelectedDownload?.TargetPath ?? "-";
     public string SelectedUrl => SelectedDownload?.Url ?? "-";
+    public string SelectedQualityLabel => SelectedDownload?.QualityLabel is { Length: > 0 } q ? q : "-";
 
-    /// <summary>True when the selected item is/was handled by yt-dlp (video site).</summary>
+    /// <summary>True when the selected item is handled by yt-dlp (video site).</summary>
     public bool IsSelectedYtDlp => SelectedDownload is not null && YtDlpService.IsSupported(SelectedDownload.Url);
 
     // -----------------------------------------------------------------------
@@ -142,9 +151,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void NormalizeLoadedItem(DownloadItem item)
     {
         if (item.Status == DownloadStatus.Failed)
-        {
             _downloadService.TryRepairCompletedPartial(item);
-        }
 
         if (File.Exists(item.TargetPath) &&
             (item.Progress >= 99.9 ||
@@ -183,6 +190,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         var urlString = uri.ToString();
         var isVideoSite = YtDlpService.IsSupported(urlString);
 
+        // For video sites, ask the user to pick a quality before starting
+        string ytDlpFormat = "bestvideo+bestaudio/best";
+        string qualityLabel = "Best (auto)";
+
+        if (isVideoSite)
+        {
+            var picked = _pickQuality(_ytDlpService, urlString);
+            if (picked == null)
+            {
+                // User cancelled quality picker — don't start the download
+                StatusText = "Download cancelled";
+                return;
+            }
+            ytDlpFormat = picked.YtDlpFormat;
+            qualityLabel = picked.Label;
+        }
+
         var item = new DownloadItem
         {
             Url = urlString,
@@ -191,7 +215,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 ? CreateVideoFileName(uri)
                 : CreateFileName(uri),
             TargetFolder = DownloadFolder,
-            IsYtDlp = isVideoSite
+            IsYtDlp = isVideoSite,
+            YtDlpFormat = ytDlpFormat,
+            QualityLabel = qualityLabel
         };
 
         _pendingReferrer = null;
@@ -199,7 +225,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         Downloads.Insert(0, item);
         SelectedDownload = item;
         NewUrl = string.Empty;
-        StatusText = isVideoSite ? "Video download started (yt-dlp)" : "Download started";
+        StatusText = isVideoSite
+            ? $"Video download started ({qualityLabel})"
+            : "Download started";
         OnCountsChanged();
         _ = RunDownloadAsync(item);
     }
@@ -223,19 +251,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void PauseSelected()
     {
-        if (SelectedDownload is null)
-        {
-            return;
-        }
+        if (SelectedDownload is null) return;
 
         if (SelectedDownload.IsYtDlp)
-        {
             _ytDlpService.Pause(SelectedDownload);
-        }
         else
-        {
             _downloadService.Pause(SelectedDownload);
-        }
 
         StatusText = "Download paused";
     }
@@ -244,9 +265,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         if (SelectedDownload is null ||
             SelectedDownload.Status is DownloadStatus.Downloading or DownloadStatus.Completed)
-        {
             return;
-        }
 
         StatusText = "Download resumed";
         _ = RunDownloadAsync(SelectedDownload);
@@ -254,19 +273,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void CancelSelected()
     {
-        if (SelectedDownload is null)
-        {
-            return;
-        }
+        if (SelectedDownload is null) return;
 
         if (SelectedDownload.IsYtDlp)
-        {
             _ytDlpService.Cancel(SelectedDownload);
-        }
         else
-        {
             _downloadService.Cancel(SelectedDownload);
-        }
 
         StatusText = "Download canceled";
         _ = SaveAsync();
@@ -274,10 +286,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void DeleteSelected()
     {
-        if (SelectedDownload is null)
-        {
-            return;
-        }
+        if (SelectedDownload is null) return;
 
         var item = SelectedDownload;
         var deleteChoice = _confirmDelete(item);
@@ -290,20 +299,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
         if (item.Status == DownloadStatus.Downloading)
         {
-            if (item.IsYtDlp)
-            {
-                _ytDlpService.Cancel(item);
-            }
-            else
-            {
-                _downloadService.Cancel(item);
-            }
+            if (item.IsYtDlp) _ytDlpService.Cancel(item);
+            else _downloadService.Cancel(item);
         }
 
         if (deleteChoice == DeleteChoice.DeleteFileToo)
-        {
             DeleteDownloadedFiles(item);
-        }
 
         Downloads.Remove(item);
         SelectedDownload = Downloads.FirstOrDefault();
@@ -322,22 +323,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private static void TryDeleteFile(string path)
     {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch { }
+        try { if (File.Exists(path)) File.Delete(path); } catch { }
     }
 
     private void OpenSelectedFolder()
     {
-        if (SelectedDownload is null || !Directory.Exists(SelectedDownload.TargetFolder))
-        {
-            return;
-        }
+        if (SelectedDownload is null || !Directory.Exists(SelectedDownload.TargetFolder)) return;
 
         Process.Start(new ProcessStartInfo
         {
@@ -363,11 +354,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void CopySelectedUrl()
     {
-        if (SelectedDownload is null)
-        {
-            return;
-        }
-
+        if (SelectedDownload is null) return;
         Clipboard.SetText(SelectedDownload.Url);
         StatusText = "URL copied";
     }
@@ -379,9 +366,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             .ToList();
 
         foreach (var item in completed)
-        {
             Downloads.Remove(item);
-        }
 
         SelectedDownload = Downloads.FirstOrDefault();
         StatusText = completed.Count > 0 ? "Completed downloads cleared" : "No completed downloads";
@@ -390,19 +375,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
 
     // -----------------------------------------------------------------------
-    // Download runner â€” routes to the right engine
+    // Download runner — routes to the right engine
     // -----------------------------------------------------------------------
 
     private async Task RunDownloadAsync(DownloadItem item)
     {
         if (item.IsYtDlp)
-        {
-            await _ytDlpService.StartAsync(item);
-        }
+            await _ytDlpService.StartAsync(item, item.YtDlpFormat);
         else
-        {
             await _downloadService.StartAsync(item);
-        }
 
         StatusText = item.Status switch
         {
@@ -425,6 +406,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             _pendingReferrer = request.Referrer;
             NewUrl = request.Url;
+            // Note: quality picker will be invoked by AddDownload()
             AddDownload();
         });
     }
@@ -438,24 +420,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         var name = Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath));
 
         if (string.IsNullOrWhiteSpace(name))
-        {
             name = $"download-{DateTime.Now:yyyyMMdd-HHmmss}.bin";
-        }
 
         foreach (var invalid in Path.GetInvalidFileNameChars())
-        {
             name = name.Replace(invalid, '-');
-        }
 
         return name;
     }
 
     private static string CreateVideoFileName(Uri uri)
     {
-        // yt-dlp will rename the file once the title is known;
-        // this is just a placeholder shown in the list while it starts.
         var host = uri.Host.Replace("www.", "").Replace("m.", "");
-        return $"video-{host}-{DateTime.Now:yyyyMMdd-HHmmss}.mkv";
+        return $"video-{host}-{DateTime.Now:yyyyMMdd-HHmmss}.mp4";
     }
 
     private void AttachDownloadItem(DownloadItem item)
@@ -476,7 +452,6 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             }
         }
 
-        // FileName update from yt-dlp destination line
         if (e.PropertyName == nameof(DownloadItem.FileName) && ReferenceEquals(sender, SelectedDownload))
         {
             OnPropertyChanged(nameof(SelectedFileName));
@@ -497,9 +472,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
-        {
             return false;
-        }
 
         field = value;
         OnPropertyChanged(propertyName);
@@ -516,4 +489,3 @@ public enum DeleteChoice
     RemoveFromListOnly,
     DeleteFileToo
 }
-

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -22,9 +22,11 @@ try
     Directory.CreateDirectory(incomingFolder);
 
     var requestPath = Path.Combine(incomingFolder, $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}.json");
+
+    // FIX: Also persist quality/format if provided by the extension
     await File.WriteAllTextAsync(
         requestPath,
-        JsonSerializer.Serialize(new IncomingRequest(message.Url, message.Referrer)),
+        JsonSerializer.Serialize(new IncomingRequest(message.Url, message.Referrer, message.Quality)),
         Encoding.UTF8);
 
     TryStartDesktopApp();
@@ -41,16 +43,10 @@ static NativeRequest? ReadNativeMessage()
     var lengthBytes = new byte[4];
     var read = stdin.Read(lengthBytes, 0, 4);
 
-    if (read != 4)
-    {
-        return null;
-    }
+    if (read != 4) return null;
 
     var length = BitConverter.ToInt32(lengthBytes, 0);
-    if (length <= 0)
-    {
-        return null;
-    }
+    if (length <= 0) return null;
 
     var buffer = new byte[length];
     var offset = 0;
@@ -58,11 +54,7 @@ static NativeRequest? ReadNativeMessage()
     while (offset < length)
     {
         var chunk = stdin.Read(buffer, offset, length - offset);
-        if (chunk == 0)
-        {
-            break;
-        }
-
+        if (chunk == 0) break;
         offset += chunk;
     }
 
@@ -100,11 +92,12 @@ static void TryStartDesktopApp()
     };
 
     var appPath = candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists);
+    if (appPath is null) return;
 
-    if (appPath is null)
-    {
-        return;
-    }
+    // Check if already running to avoid multiple instances
+    var exeName = Path.GetFileNameWithoutExtension(appPath);
+    var running = System.Diagnostics.Process.GetProcessesByName(exeName);
+    if (running.Length > 0) return; // App already running, it will pick up the file via watcher
 
     Process.Start(new ProcessStartInfo
     {
@@ -113,9 +106,6 @@ static void TryStartDesktopApp()
     });
 }
 
-internal sealed record NativeRequest(string Url, string? Referrer);
-
-internal sealed record IncomingRequest(string Url, string? Referrer);
-
+internal sealed record NativeRequest(string Url, string? Referrer, string? Quality = null);
+internal sealed record IncomingRequest(string Url, string? Referrer, string? Quality = null);
 internal sealed record NativeResponse(bool Ok, string Message);
-
