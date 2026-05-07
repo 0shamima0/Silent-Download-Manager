@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.log
+# build/publish/
+build/publish/SDM/ffmpeg.exe
+build/publish/SDM/yt-dlp.exe

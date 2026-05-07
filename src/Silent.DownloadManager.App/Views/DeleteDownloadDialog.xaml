@@ -1,0 +1,71 @@
+﻿<Window x:Class="Silent.DownloadManager.App.Views.DeleteDownloadDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Delete Download"
+        Width="440"
+        Height="230"
+        MinWidth="420"
+        MinHeight="220"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#F4F7FB">
+    <Window.Resources>
+        <Style x:Key="DialogButton" TargetType="Button">
+            <Setter Property="MinWidth" Value="96" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <Border Margin="18"
+            Padding="18"
+            Background="White"
+            BorderBrush="#DFE7F2"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Delete Download"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="#10233F" />
+                <TextBlock x:Name="FileNameText"
+                           Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="#5B6B82" />
+            </StackPanel>
+
+            <CheckBox x:Name="DeleteFileCheckBox"
+                      Grid.Row="1"
+                      Margin="0,22,0,0"
+                      VerticalAlignment="Top"
+                      Content="Also delete downloaded file from folder"
+                      Foreground="#1B2B45" />
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Style="{StaticResource DialogButton}"
+                        Background="#E8EEF8"
+                        Foreground="#1B2B45"
+                        Content="Cancel"
+                        Click="CancelButton_Click" />
+                <Button Style="{StaticResource DialogButton}"
+                        Background="#D92D20"
+                        Foreground="White"
+                        Content="Delete"
+                        Click="DeleteButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
+

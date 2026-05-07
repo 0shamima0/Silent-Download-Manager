@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Silent.DownloadManager.App/Silent.DownloadManager.App.csproj" />
+    <Project Path="src/Silent.DownloadManager.NativeHost/Silent.DownloadManager.NativeHost.csproj" />
+  </Folder>
+</Solution>
+

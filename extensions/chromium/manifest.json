@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Silent Download Manager",
+  "description": "Send direct file and media links from Chrome or Edge to Silent Download Manager. Supports YouTube, Facebook, Instagram, and more via yt-dlp.",
+  "version": "0.7.0",
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_icon": "icon-128.png",
+    "default_title": "Silent Download Manager"
+  }
+}

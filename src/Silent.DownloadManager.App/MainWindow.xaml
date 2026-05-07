@@ -1,0 +1,505 @@
+﻿<Window x:Class="Silent.DownloadManager.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:Silent.DownloadManager.App.Models"
+        mc:Ignorable="d"
+        Title="Silent Download Manager"
+        Height="760"
+        MinHeight="660"
+        Width="1220"
+        MinWidth="1020"
+        Background="#EEF2F7">
+    <Window.Resources>
+        <SolidColorBrush x:Key="InkBrush" Color="#102033" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#65758B" />
+        <SolidColorBrush x:Key="LineBrush" Color="#D9E2EE" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#1769E0" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#D92D20" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
+
+        <Style x:Key="PanelBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="MinWidth" Value="94" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.45" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButton" BasedOn="{StaticResource PrimaryButton}" TargetType="Button">
+            <Setter Property="Background" Value="#E7EDF6" />
+            <Setter Property="Foreground" Value="#1C2B3E" />
+        </Style>
+
+        <Style x:Key="DangerButton" BasedOn="{StaticResource PrimaryButton}" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+        </Style>
+
+        <Style x:Key="InputBox" TargetType="TextBox">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="BorderBrush" Value="#C8D4E4" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="GridLinesVisibility" Value="None" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="RowHeaderWidth" Value="0" />
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFD" />
+            <Setter Property="SelectionMode" Value="Single" />
+            <Setter Property="SelectionUnit" Value="FullRow" />
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="#F3F6FA" />
+            <Setter Property="Foreground" Value="#4D5F75" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridRow">
+            <Setter Property="Height" Value="54" />
+            <Setter Property="BorderBrush" Value="#EDF1F6" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridRow">
+                        <Border x:Name="RowBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid>
+                                <Border x:Name="SelectionRail"
+                                        Width="0"
+                                        HorizontalAlignment="Left"
+                                        Background="{StaticResource AccentBrush}" />
+                                <SelectiveScrollingGrid>
+                                    <SelectiveScrollingGrid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </SelectiveScrollingGrid.ColumnDefinitions>
+                                    <SelectiveScrollingGrid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </SelectiveScrollingGrid.RowDefinitions>
+                                    <DataGridCellsPresenter Grid.Column="1"
+                                                            ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                            SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                    <DataGridDetailsPresenter Grid.Column="1"
+                                                              Grid.Row="1"
+                                                              SelectiveScrollingGrid.SelectiveScrollingOrientation="{Binding AreRowDetailsFrozen, RelativeSource={RelativeSource AncestorType=DataGrid}, ConverterParameter={x:Static SelectiveScrollingOrientation.Vertical}}"
+                                                              Visibility="{TemplateBinding DetailsVisibility}" />
+                                    <DataGridRowHeader Grid.RowSpan="2"
+                                                       SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical"
+                                                       Visibility="{Binding HeadersVisibility, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                </SelectiveScrollingGrid>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background" Value="#F1F6FD" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background" Value="#DDEBFF" />
+                                <Setter TargetName="SelectionRail" Property="Width" Value="4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#4D5F75" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Downloading}">
+                    <Setter Property="Foreground" Value="#1769E0" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Completed}">
+                    <Setter Property="Foreground" Value="#12805C" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Failed}">
+                    <Setter Property="Foreground" Value="#D92D20" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:DownloadStatus.Paused}">
+                    <Setter Property="Foreground" Value="#9A6700" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Silent Download Manager"
+                           FontSize="28"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource InkBrush}" />
+                <TextBlock Text="Clean queue control for direct files, browser handoff, pause, resume, and history."
+                           Margin="0,5,0,0"
+                           FontSize="13"
+                           Foreground="{StaticResource MutedBrush}" />
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    MinWidth="210"
+                    Padding="14,8"
+                    Style="{StaticResource PanelBorder}">
+                <StackPanel>
+                    <TextBlock Text="CURRENT STATUS"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource MutedBrush}" />
+                    <TextBlock Text="{Binding StatusText}"
+                               Margin="0,3,0,0"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#126B39"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,0,0,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Padding="16" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Download URL"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource MutedBrush}" />
+                        <TextBox Margin="0,7,0,0"
+                                 Style="{StaticResource InputBox}"
+                                 Text="{Binding NewUrl, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Paste a direct HTTP/HTTPS file URL" />
+                    </StackPanel>
+
+                    <Button Grid.Column="1"
+                            VerticalAlignment="Bottom"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding AddDownloadCommand}"
+                            Content="Add Download" />
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" MinWidth="280" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" MinWidth="92" />
+                    <ColumnDefinition Width="*" MinWidth="92" />
+                    <ColumnDefinition Width="*" MinWidth="92" />
+                    <ColumnDefinition Width="*" MinWidth="92" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Padding="16" Style="{StaticResource PanelBorder}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Download Folder"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource MutedBrush}" />
+                            <TextBlock Text="{Binding DownloadFolder}"
+                                       Margin="0,7,0,0"
+                                       FontSize="13"
+                                       Foreground="{StaticResource InkBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding ChooseFolderCommand}"
+                                Content="Change" />
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Padding="14" Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="{Binding TotalCount}" Margin="0,4,0,0" FontSize="22" FontWeight="Bold" Foreground="{StaticResource InkBrush}" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="3" Margin="8,0,0,0" Padding="14" Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="ACTIVE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="{Binding ActiveCount}" Margin="0,4,0,0" FontSize="22" FontWeight="Bold" Foreground="#1769E0" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="4" Margin="8,0,0,0" Padding="14" Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="DONE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="{Binding CompletedCount}" Margin="0,4,0,0" FontSize="22" FontWeight="Bold" Foreground="#12805C" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="5" Margin="8,0,0,0" Padding="14" Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="FAILED" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="{Binding FailedCount}" Margin="0,4,0,0" FontSize="22" FontWeight="Bold" Foreground="#D92D20" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="320" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource PanelBorder}" ClipToBounds="True">
+                <DataGrid ItemsSource="{Binding Downloads}"
+                          SelectedItem="{Binding SelectedDownload}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          RowBackground="White"
+                          IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="2.2*" />
+                        <DataGridTemplateColumn Header="STATUS" Width="124">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type models:DownloadItem}">
+                                    <TextBlock Text="{Binding Status}"
+                                               Style="{StaticResource StatusText}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="PROGRESS" Width="2*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type models:DownloadItem}">
+                                    <Grid Margin="0,8">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <ProgressBar Grid.Row="0"
+                                                     Height="7"
+                                                     Minimum="0"
+                                                     Maximum="100"
+                                                     Value="{Binding Progress}"
+                                                     Foreground="#1769E0"
+                                                     Background="#E6ECF4" />
+                                        <TextBlock Grid.Row="1"
+                                                   Margin="0,6,0,0"
+                                                   Text="{Binding ProgressLabel}"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   FontSize="12"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="SPEED" Binding="{Binding SpeedLabel}" Width="100" />
+                        <DataGridTextColumn Header="SIZE" Binding="{Binding SizeLabel}" Width="108" />
+                        <DataGridTextColumn Header="MESSAGE" Binding="{Binding ErrorMessage}" Width="1.4*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <Border Grid.Column="2" Padding="14" Style="{StaticResource PanelBorder}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Selected Download"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource InkBrush}" />
+                        <TextBlock Text="{Binding SelectedFileName}"
+                                   Margin="0,8,0,0"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource InkBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,18,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Status" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedStatusText}" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,10,0,0" Text="Progress" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Text="{Binding SelectedProgressText}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,10,0,0" Text="Path" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Text="{Binding SelectedTargetPath}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" />
+                    </Grid>
+
+                    <TextBox Grid.Row="2"
+                             Margin="0,16,0,0"
+                             Style="{StaticResource InputBox}"
+                             Height="86"
+                             Text="{Binding SelectedUrl, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" />
+
+                    <StackPanel Grid.Row="3" Margin="0,14,0,0">
+                        <UniformGrid Columns="2">
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    MinWidth="0"
+                                    Margin="0,0,6,8"
+                                    Command="{Binding PauseCommand}"
+                                    Content="Pause" />
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    MinWidth="0"
+                                    Margin="6,0,0,8"
+                                    Command="{Binding ResumeCommand}"
+                                    Content="Resume" />
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    MinWidth="0"
+                                    Margin="0,0,6,8"
+                                    Command="{Binding OpenFileCommand}"
+                                    Content="Open File" />
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    MinWidth="0"
+                                    Margin="6,0,0,8"
+                                    Command="{Binding OpenFolderCommand}"
+                                    Content="Open Folder" />
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    MinWidth="0"
+                                    Margin="0,0,6,8"
+                                    Command="{Binding CopyUrlCommand}"
+                                    Content="Copy URL" />
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    MinWidth="0"
+                                    Margin="6,0,0,8"
+                                    Command="{Binding ClearCompletedCommand}"
+                                    Content="Clear Done" />
+                        </UniformGrid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0"
+                                    Style="{StaticResource DangerButton}"
+                                    MinWidth="0"
+                                    Margin="0"
+                                    Command="{Binding CancelCommand}"
+                                    Content="Cancel" />
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource DangerButton}"
+                                    MinWidth="0"
+                                    Margin="0"
+                                    Command="{Binding DeleteCommand}"
+                                    Content="Delete" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3"
+                Margin="0,14,0,0"
+                Padding="12,8"
+                Style="{StaticResource PanelBorder}">
+            <TextBlock Text="{Binding FooterText}"
+                       Foreground="{StaticResource MutedBrush}"
+                       FontSize="12" />
+        </Border>
+    </Grid>
+</Window>
+
